@@ -63,10 +63,12 @@ List* removeValue(List* list, int value){//Remove specific value from the list
 }
 
 void deleteList (List* list){//Delete the list
+    List* t;
     while(list != NULL){
         List* aux = list;
-        list = list->next;
+        t = list->next;
         free(aux);
+        aux = t;
     }
 }
 
