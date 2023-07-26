@@ -1,3 +1,5 @@
+package June_27;
+
 public class Dog{
     private String name;
     private String race;

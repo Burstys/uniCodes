@@ -20,14 +20,14 @@ Queue* createQueue(void){//Creates queue
     q->firstElement = 0;
     q->lastElement = 0;
 }
-void queueElement(Queue* q, int element){//Queue element
+void Enqueue (Queue* q, int element){//Enqueues
     q->elements[q->lastElement] = element;
     q->lastElement += 1;
     if(q->lastElement == MAX_ELEMENTS){
         q->lastElement = 0;
     }
 }
-void unQueue (Queue* q){//Unqueues 
+void dequeue (Queue* q){//Dequeues 
     int r = q->elements[q->firstElement];
     q->firstElement += 1;
     if(q->firstElement == MAX_ELEMENTS){

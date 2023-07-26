@@ -1,3 +1,5 @@
+package June_27;
+
 public class Util {
 
     public static boolean Even(int number){

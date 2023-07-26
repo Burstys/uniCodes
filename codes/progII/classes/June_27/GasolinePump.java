@@ -1,3 +1,5 @@
+package June_27;
+
 public class GasolinePump {
     private double capacity;
     private double pricePerLiter;
