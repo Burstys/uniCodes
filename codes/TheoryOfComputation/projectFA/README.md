@@ -1,139 +1,106 @@
 # Descrição - Simulador de Autômatos
 
-- O simulador consiste em 2 (duas) entradas com dados, sendo uma JSON contendo as configurações do autômato e outra CSV contendo as entradas a serem lidas e seus respectivos resultados esperados.
+- O simulador consiste em 2 (duas) entradas com dados, sendo uma JSON (.aut) contendo as configurações do autômato e outra CSV (.in) contendo as entradas a serem lidas e seus respectivos resultados esperados.
 
-### Para a elaboração do simulador, foram utilizadas as seguintes funções e métodos:
->fs = Módulo voltado a interação com arquivos que permite a leitura e gravação de arquivos
+# Funções utilizadas na elaboração do simulador de autômatos:
+
+>Importando o módulo fs:
+- O código começa importando o módulo fs, que é o módulo de sistema de arquivos do Node.js. Ele permite a leitura e escrita de arquivos.
 ````
 const fs = require('fs');
 ````
->fs.fileReadSync() = função utilizada para ler um arquivo de forma síncrona, onde a leitura completa é realizada antes de prosseguir com a execução do código
-````
-const automatoJSON = fs.readFileSync('transition.json', 'utf-8');
-````
->JSON.parse() = função utilizada para converter em objeto JavaScript uma string do arquivo JSON
-````
-const automatoDefinicoes = JSON.parse(automatoJSON);
-````
->automato = objeto criado para representar o autômato e armazenar as informações obtidas a partir do arquivo JSON, tendo as propriedades "estadoInicial", "estadoFinal" e "transicoes"
-````
-const automato = {
-    estadoInicial: automatoDefinicoes.initial,
-    estadoFinal: automatoDefinicoes.final,
-    transicoes: automatoDefinicoes.transitions
-};
-````
-automato.transicoes = array criado para armazenar as transições contidas no autômato, formadas por um objeto que contém os campos "from", "read" e "to"
-````
-const transicoes = [];
 
-for (const transicao of automatoDefinicoes.transitions) {
-    const { from, read, to } = transicao;
-    transicoes.push({ from, read, to });
+>Definindo funções de carregamento de dados:
+- carregarAutomato(caminhoArquivo): Esta função lê um arquivo JSON que contém a especificação do autômato e o converte em um objeto JavaScript usando JSON.parse.
+````
+function carregarAutomato(caminhoArquivo) {
+  const dadosAutomato = fs.readFileSync(caminhoArquivo, 'utf8');
+  return JSON.parse(dadosAutomato);
 }
-
-automato.transicoes = transicoes;
 ````
->processarEntradas() = função que recebe como parâmetros o autômato e as entradas a partir dos arquivos JSON e CSV, respectivamente, percorrendo e verificando se cada entrada é aceita ou não
+- carregarEntradasDeTeste(caminhoArquivo): Esta função lê um arquivo CSV que contém as entradas de teste e os resultados esperados, e transforma os dados em um array de objetos.
 ````
-function processarEntradas(automato, entradas) {
-    const resultados = [];
+function carregarEntradasDeTeste(caminhoArquivo) {
+  const dadosEntradasTeste = fs.readFileSync(caminhoArquivo, 'utf8');
+  const entradasTeste = dadosEntradasTeste.split('\n').map(linha => {
+    const [entrada, esperado] = linha.trim().split(';');
+    return { entrada, esperado: parseInt(esperado) };
+  });
+  return entradasTeste;
+}
+````
 
-    for (const entrada of entradas) {
-        const entradasCSV = entrada.join(''); // Transforma o array em uma string
-        const resultadoEsperado = entrada[entrada.length - 1]; // Último elemento é o resultado esperado
+>Definindo a função de cálculo do fecho epsilon:
+- fechoEpsilon(automato, estado): Esta função recebe um autômato e um estado como entrada e calcula o fecho epsilon desse estado. O fecho epsilon é o conjunto de todos os estados alcançáveis a partir do estado atual através de movimentos vazios.
+````
+function fechoEpsilon(automato, estado) {
+  const fecho = new Set([estado]); // Conjunto para armazenar os estados no fecho epsilon
+  const fila = [estado]; // Fila para percorrer os estados
 
-        // Inicializa o estado atual como o estado inicial do autômato
-        let estadoAtual = automato.estadoInicial;
-
-        // Inicializa o tempo de execução
-        const inicioTempo = process.hrtime();
-
-        // Percorre a cadeia de entrada
-        for (const simboloAtual of entrada) {
-            // Obtém as transições a partir do estado atual
-            const transicoes = automato.transicoes.filter((transicao) => transicao.from === estadoAtual);
-
-            // Verifica se existe uma transição para o símbolo atual
-            const transicoesSimbolo = transicoes.find((transicao) => transicao.read === simboloAtual);
-
-            // Verifica se existe uma transição vazia
-            const transicoesVazias = transicoes.find((transicao) => transicao.read === null);
-
-            // Verifica se há transições possíveis
-            if (transicoesSimbolo || transicoesVazias) {
-                // Atualiza o estado atual com base nas transições encontradas
-                estadoAtual = (transicoesSimbolo && transicoesSimbolo.to) || (transicoesVazias && transicoesVazias.to);
-
-                // Se o estado atual for indefinido, a cadeia foi rejeitada
-                if (estadoAtual === undefined) {
-                    resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: 0 });
-                    break;
-                }
-            } else {
-                // Se não houver transições possíveis, a cadeia foi rejeitada
-                resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: 0 });
-                break;
-            }
+  while (fila.length > 0) {
+    const estadoAtual = fila.pop(); // Pegar o próximo estado da fila
+    for (const transicao of automato.transitions) {
+      if (transicao.from === estadoAtual && transicao.read === null) {
+        const estadoDestino = transicao.to; // Estado alcançável por movimento vazio
+        if (!fecho.has(estadoDestino)) {
+          fecho.add(estadoDestino); // Adicionar ao fecho
+          fila.push(estadoDestino); // Adicionar à fila para explorar mais estados
         }
-
-        // Se a cadeia foi percorrida completamente e o estado atual está entre os estados finais, a cadeia é aceita
-        if (estadoAtual !== undefined && automato.estadoFinal.includes(estadoAtual)) {
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'aceita', tempoExecucao: calcularTempoExecucao(inicioTempo) });
-        } else if (estadoAtual !== undefined) {
-            // Se a cadeia foi percorrida completamente, mas o estado atual não está entre os estados finais, a cadeia é rejeitada
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: 0 });
-        }
+      }
     }
+  }
 
-    return resultados;
+  return fecho; // Retorna o fecho epsilon
 }
 ````
->entrada.join() = função utilizada para converter em string um array
+>Definindo a função de simulação do autômato:
+- simularAutomato(automato, entradaTeste): Esta função simula o autômato para uma determinada entrada de teste. Ela utiliza o conceito de fecho epsilon para calcular todos os estados alcançáveis a cada passo da entrada.
 ````
-const entradasCSV = entrada.join('');
-````
->transicoes.find() = função usada para encontrar o primeiro elemento que satisfaz a condição de uma função callback
-````
-// Verifica se existe uma transição para o símbolo atual
-            const transicoesSimbolo = transicoes.find((transicao) => transicao.read === simboloAtual);
+function simularAutomato(automato, entradaTeste) {
+  let estadosAtuais = fechoEpsilon(automato, automato.initial);
 
-            // Verifica se existe uma transição vazia
-            const transicoesVazias = transicoes.find((transicao) => transicao.read === null);
-
-//No caso, a função callback é dada por "(transicao) => transicao.read === simboloAtual/null"
-````
->automato.estadoFinal.includes() = verificação dos estados finais, para conferir se o estado atual está incluso
-````
-if (estadoAtual !== undefined && automato.estadoFinal.includes(estadoAtual)) {
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'aceita', tempoExecucao: calcularTempoExecucao(inicioTempo) });
-        } else if (estadoAtual !== undefined) {
-            // Se a cadeia foi percorrida completamente, mas o estado atual não está entre os estados finais, a cadeia é rejeitada
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: 0 });
+  for (const simbolo of entradaTeste) {
+    const proximosEstados = new Set();
+    for (const estado of estadosAtuais) {
+      for (const transicao of automato.transitions) {
+        if (transicao.from === estado && (transicao.read === simbolo || transicao.read === null)) {
+          proximosEstados.add(transicao.to); // Adicionar estado alcançável por transição
         }
-````
->calcularTempoExecucao() = função utilizada para calcular o tempo de execução em milissegundos
-````
-function calcularTempoExecucao(inicioTempo) {
-    const fimTempo = process.hrtime(inicioTempo);
-    return fimTempo[0] * 1000 + fimTempo[1] / 1000000; // Tempo de execução em milissegundos
+      }
+    }
+    estadosAtuais = new Set();
+    for (const estado of proximosEstados) {
+      estadosAtuais = new Set([...estadosAtuais, ...fechoEpsilon(automato, estado)]);
+    }
+  }
+
+  return [...estadosAtuais].some(estado => automato.final.includes(estado)); // Verificar se algum estado final foi alcançado
 }
 ````
+>Função principal:
+- principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida): A função principal carrega a especificação do autômato e as entradas de teste, e executa a simulação do autômato para cada entrada. Ela também mede o tempo de execução usando new Date().getTime() para calcular o tempo em milissegundos entre o início e o fim da simulação.
+````
+function principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida) {
+  const automato = carregarAutomato(arquivoAutomato);
+  const entradasTeste = carregarEntradasDeTeste(arquivoEntradaTeste);
 
->fs.writeFileSync() = função utilizada para gravar/escrever dados no arquivo de maneira síncrona
-````
-const resultado = processarEntradas(automato, entradas);
-const resultadoTXT = resultado
-    .map(({ entrada, resultadoEsperado, resultadoObtido, tempoExecucao }) => `${entrada}, ${resultadoEsperado}, ${resultadoObtido}, ${tempoExecucao}`)
-    .join('\n');
+  const dadosSaida = entradasTeste.map(teste => {
+    const tempoInicio = new Date().getTime();
+    const resultado = simularAutomato(automato, teste.entrada);
+    const tempoFinal = new Date().getTime();
+    const tempoDecorrido = (tempoFinal - tempoInicio);
+    return `${teste.entrada};${teste.esperado};${resultado ? 1 : 0};${tempoDecorrido}`;
+  });
 
-fs.writeFileSync('resultadoTXT', resultadoTXT);
+  fs.writeFileSync(arquivoSaida, `${dadosSaida.join('\n')}`);
+}
 ````
->.map() = método para criar um novo array a partir da leitura de cada elemento escolhido de um array existente 
+>Chamada da função principal:
+- O código verifica se o número de argumentos passados na linha de comando é igual a 5 (incluindo o próprio nome do script). Se não for, exibe uma mensagem de uso correto. Caso contrário, chama a função principal com os caminhos dos arquivos de entrada e saída fornecidos na linha de comando.
 ````
-.map(({ entrada, resultadoEsperado, resultadoObtido, tempoExecucao }) => `${entrada}, ${resultadoEsperado}, ${resultadoObtido}, ${tempoExecucao}`)
-````
->.join() = implementar "\n" ao final de cada linha
-````
-.join('\n');
+if (process.argv.length !== 5) {
+  console.log('Uso: node script.js arquivoAutomato arquivoEntradaTeste arquivoSaida');
+} else {
+  principal(process.argv[2], process.argv[3], process.argv[4]);
+}
 ````

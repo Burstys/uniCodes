@@ -1,96 +1,83 @@
 const fs = require('fs');
 
-// Carregando o automato em um objeto
-const automatoJSON = fs.readFileSync('transition.json', 'utf-8');
-const automatoDefinicoes = JSON.parse(automatoJSON);
-
-const automato = {
-    estadoInicial: automatoDefinicoes.initial,
-    estadoFinal: automatoDefinicoes.final,
-    transicoes: automatoDefinicoes.transitions
-};
-
-const transicoes = [];
-
-for (const transicao of automatoDefinicoes.transitions) {
-    const { from, read, to } = transicao;
-    transicoes.push({ from, read, to });
+// Carregar o autômato a partir do arquivo JSON
+function carregarAutomato(caminhoArquivo) {
+  const dadosAutomato = fs.readFileSync(caminhoArquivo, 'utf8');
+  return JSON.parse(dadosAutomato);
 }
 
-automato.transicoes = transicoes;
-
-// Leitura das entradas do arquivo CSV
-const entradas = [];
-
-const entradasCSV = fs.readFileSync('entradas2.csv', 'utf-8');
-const linhas = entradasCSV.trim().split('\n');
-
-for (const linha of linhas) {
-    const simbolos = linha.trim().split('');
-    entradas.push(simbolos);
+// Carregar os testes de entrada a partir do arquivo CSV
+function carregarEntradasDeTeste(caminhoArquivo) {
+  const dadosEntradasTeste = fs.readFileSync(caminhoArquivo, 'utf8');
+  const entradasTeste = dadosEntradasTeste.split('\n').map(linha => {
+    const [entrada, esperado] = linha.trim().split(';');
+    return { entrada, esperado: parseInt(esperado) };
+  });
+  return entradasTeste;
 }
 
-function processarEntradas(automato, entradas) {
-    const resultados = [];
+// Simular o autômato utilizando o movimento vazio
+function fechoEpsilon(automato, estado) {
+  const fecho = new Set([estado]); // Conjunto para armazenar os estados no fecho epsilon
+  const fila = [estado]; // Fila para percorrer os estados
 
-    for (const entrada of entradas) {
-        const entradasCSV = entrada.join(''); // Transforma o array em uma string
-        const resultadoEsperado = entrada[entrada.length - 1]; // Último elemento é o resultado esperado
-
-        // Inicializa o estado atual como o estado inicial do autômato
-        let estadoAtual = automato.estadoInicial;
-
-        // Inicializa o tempo de execução
-        const inicioTempo = process.hrtime();
-
-        // Percorre a cadeia de entrada
-        for (const simboloAtual of entrada) {
-            // Obtém as transições a partir do estado atual
-            const transicoes = automato.transicoes.filter((transicao) => transicao.from === estadoAtual);
-
-            // Verifica se existe uma transição para o símbolo atual
-            const transicoesSimbolo = transicoes.find((transicao) => transicao.read === simboloAtual);
-
-            // Verifica se existe uma transição vazia
-            const transicoesVazias = transicoes.find((transicao) => transicao.read === null);
-
-            // Verifica se há transições possíveis
-            if (transicoesSimbolo || transicoesVazias) {
-                // Atualiza o estado atual com base nas transições encontradas
-                estadoAtual = (transicoesSimbolo && transicoesSimbolo.to) || (transicoesVazias && transicoesVazias.to);
-
-                // Se o estado atual for indefinido, a cadeia foi rejeitada
-                if (estadoAtual === undefined) {
-                    resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: calcularTempoExecucao(inicioTempo) });
-                    break;
-                }
-            } else {
-                // Se não houver transições possíveis, a cadeia foi rejeitada
-                resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: calcularTempoExecucao(inicioTempo) });
-                break;
-            }
+  while (fila.length > 0) {
+    const estadoAtual = fila.pop(); // Pegar o próximo estado da fila
+    for (const transicao of automato.transitions) {
+      if (transicao.from === estadoAtual && transicao.read === null) {
+        const estadoDestino = transicao.to; // Estado alcançável por movimento vazio
+        if (!fecho.has(estadoDestino)) {
+          fecho.add(estadoDestino); // Adicionar ao fecho
+          fila.push(estadoDestino); // Adicionar à fila para explorar mais estados
         }
-
-        // Se a cadeia foi percorrida completamente e o estado atual está entre os estados finais, a cadeia é aceita
-        if (estadoAtual !== undefined && automato.estadoFinal.includes(estadoAtual)) {
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'aceita', tempoExecucao: calcularTempoExecucao(inicioTempo) });
-        } else if (estadoAtual !== undefined) {
-            // Se a cadeia foi percorrida completamente, mas o estado atual não está entre os estados finais, a cadeia é rejeitada
-            resultados.push({ entrada: entradasCSV, resultadoEsperado, resultadoObtido: 'rejeita', tempoExecucao: 0 });
-        }
+      }
     }
+  }
 
-    return resultados;
+  return fecho; // Retorna o fecho epsilon
 }
 
-function calcularTempoExecucao(inicioTempo) {
-    const fimTempo = process.hrtime(inicioTempo);
-    return fimTempo[0] * 1000 + fimTempo[1] / 1000000; // Tempo de execução em milissegundos
+// Simular o autômato para um teste de entrada
+function simularAutomato(automato, entradaTeste) {
+  let estadosAtuais = fechoEpsilon(automato, automato.initial);
+
+  for (const simbolo of entradaTeste) {
+    const proximosEstados = new Set();
+    for (const estado of estadosAtuais) {
+      for (const transicao of automato.transitions) {
+        if (transicao.from === estado && (transicao.read === simbolo || transicao.read === null)) {
+          proximosEstados.add(transicao.to); // Adicionar estado alcançável por transição
+        }
+      }
+    }
+    estadosAtuais = new Set();
+    for (const estado of proximosEstados) {
+      estadosAtuais = new Set([...estadosAtuais, ...fechoEpsilon(automato, estado)]);
+    }
+  }
+
+  return [...estadosAtuais].some(estado => automato.final.includes(estado)); // Verificar se algum estado final foi alcançado
 }
 
-const resultado = processarEntradas(automato, entradas);
-const resultadoTXT = resultado
-    .map(({ entrada, resultadoEsperado, resultadoObtido, tempoExecucao }) => `${entrada}, ${resultadoEsperado}, ${resultadoObtido}, ${tempoExecucao}`)
-    .join('\n');
+// Função principal
+function principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida) {
+  const automato = carregarAutomato(arquivoAutomato);
+  const entradasTeste = carregarEntradasDeTeste(arquivoEntradaTeste);
 
-fs.writeFileSync('resultadoTXT', resultadoTXT);
+  const dadosSaida = entradasTeste.map(teste => {
+    const tempoInicio = new Date().getTime();
+    const resultado = simularAutomato(automato, teste.entrada);
+    const tempoFinal = new Date().getTime();
+    const tempoDecorrido = (tempoFinal - tempoInicio);
+    return `${teste.entrada};${teste.esperado};${resultado ? 1 : 0};${tempoDecorrido}`;
+  });
+
+  fs.writeFileSync(arquivoSaida, `${dadosSaida.join('\n')}`);
+}
+
+// Chamada da função principal
+if (process.argv.length !== 5) {
+  console.log('Uso: node script.js arquivoAutomato arquivoEntradaTeste arquivoSaida');
+} else {
+  principal(process.argv[2], process.argv[3], process.argv[4]);
+}
