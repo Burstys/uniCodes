@@ -2,6 +2,8 @@
 
 - O simulador consiste em 2 (duas) entradas com dados, sendo uma JSON (.aut) contendo as configurações do autômato e outra CSV (.in) contendo as entradas a serem lidas e seus respectivos resultados esperados.
 
+## Caminho para o respositório no GitHub: https://github.com/Burstys/uniCodes/tree/master/codes/TheoryOfComputation/projectFA
+
 # Funções utilizadas na elaboração do simulador de autômatos:
 
 >Importando o módulo fs:
