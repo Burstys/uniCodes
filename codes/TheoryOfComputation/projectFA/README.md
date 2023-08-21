@@ -59,6 +59,8 @@ function fechoEpsilon(automato, estado) {
 - simularAutomato(automato, entradaTeste): Esta função simula o autômato para uma determinada entrada de teste. Ela utiliza o conceito de fecho epsilon para calcular todos os estados alcançáveis a cada passo da entrada.
 ````
 function simularAutomato(automato, entradaTeste) {
+  const tempoInicio = process.hrtime(); // Captura o momento de início da simulação
+
   let estadosAtuais = fechoEpsilon(automato, automato.initial);
 
   for (const simbolo of entradaTeste) {
@@ -76,22 +78,25 @@ function simularAutomato(automato, entradaTeste) {
     }
   }
 
-  return [...estadosAtuais].some(estado => automato.final.includes(estado)); // Verificar se algum estado final foi alcançado
+  const tempoFinal = process.hrtime(tempoInicio); // Captura o tempo decorrido usando hrtime
+  const tempoDecorrido = (tempoFinal[0] * 1e9 + tempoFinal[1]) / 1e6; // Converte para milissegundos
+
+  return {
+    resultado: [...estadosAtuais].some(estado => automato.final.includes(estado)),
+    tempoDecorrido: tempoDecorrido
+  };
 }
 ````
 >Função principal:
-- principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida): A função principal carrega a especificação do autômato e as entradas de teste, e executa a simulação do autômato para cada entrada. Ela também mede o tempo de execução usando new Date().getTime() para calcular o tempo em milissegundos entre o início e o fim da simulação.
+- principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida): A função principal carrega a especificação do autômato e as entradas de teste, e executa a simulação do autômato para cada entrada.
 ````
 function principal(arquivoAutomato, arquivoEntradaTeste, arquivoSaida) {
   const automato = carregarAutomato(arquivoAutomato);
   const entradasTeste = carregarEntradasDeTeste(arquivoEntradaTeste);
 
   const dadosSaida = entradasTeste.map(teste => {
-    const tempoInicio = new Date().getTime();
-    const resultado = simularAutomato(automato, teste.entrada);
-    const tempoFinal = new Date().getTime();
-    const tempoDecorrido = (tempoFinal - tempoInicio);
-    return `${teste.entrada};${teste.esperado};${resultado ? 1 : 0};${tempoDecorrido}`;
+    const resultadoTempo = simularAutomato(automato, teste.entrada);
+    return `${teste.entrada};${teste.esperado};${resultadoTempo.resultado ? 1 : 0};${resultadoTempo.tempoDecorrido}`;
   });
 
   fs.writeFileSync(arquivoSaida, `${dadosSaida.join('\n')}`);
@@ -131,7 +136,7 @@ aaabba;0
 ````
 - O resultado obtido é:
 ````
-aababababbbababa;1;0;1
-abb;1;1;0
-aaabba;0;0;0
+aababababbbababa;1;0;0.0966
+abb;1;1;0.0442
+aaabba;0;0;0.2084
 ````
