@@ -2,7 +2,7 @@
 
 - O simulador consiste em 2 (duas) entradas com dados, sendo uma JSON (.aut) contendo as configurações do autômato e outra CSV (.in) contendo as entradas a serem lidas e seus respectivos resultados esperados.
 
-## Caminho para o respositório no GitHub: https://github.com/Burstys/uniCodes/tree/master/codes/TheoryOfComputation/projectFA
+### Caminho para o respositório no GitHub: https://github.com/Burstys/uniCodes/tree/master/codes/TheoryOfComputation/projectFA
 
 # Funções utilizadas na elaboração do simulador de autômatos:
 
@@ -105,4 +105,33 @@ if (process.argv.length !== 5) {
 } else {
   principal(process.argv[2], process.argv[3], process.argv[4]);
 }
+````
+>Exemplo de uso
+- Com base no seguinte autômato:
+````
+{
+    "initial": 0,
+    "final" : [4,7],
+    "transitions": [
+      {"from": 0, "read": "a", "to": 1 },
+      {"from": 1, "read": "b", "to": 3 },
+      {"from": 2, "read": "a", "to": 3 },
+      {"from": 3, "read": "b", "to": 4 },
+      {"from": 4, "read": "a", "to": 4 },
+      {"from": 7, "read": "c", "to": 1 },
+      {"from": 4, "read": null, "to": 0 }
+    ]
+  }
+````
+- E nas seguintes entradas:
+````
+aababababbbababa;1
+abb;1
+aaabba;0
+````
+- O resultado obtido é:
+````
+aababababbbababa;1;0;1
+abb;1;1;0
+aaabba;0;0;0
 ````
