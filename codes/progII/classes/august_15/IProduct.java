@@ -2,5 +2,5 @@ package august_15;
 
 public interface IProduct {
     public String getName();
-    public double getCusto();
+    public double getPrice();
 }
