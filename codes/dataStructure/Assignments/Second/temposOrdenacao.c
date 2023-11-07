@@ -81,7 +81,7 @@ int main() {
     // Loop para iterar pelos diferentes tamanhos de lista
     for (int coluna = 0; coluna < 10; coluna++) {
         int n = tamanhos_vetor[coluna]; // Tamanho atual da lista
-        int vetor[n];
+        int vetor[n]; // Tamanho
         // Loop para repetir a medição do tempo de execução 30 vezes
         for (int linha = 0; linha < 30; linha++) {
             for(int i=n,j=0; j<n;j++,i--){
