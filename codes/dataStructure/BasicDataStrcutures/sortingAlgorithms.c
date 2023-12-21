@@ -20,7 +20,7 @@ b = aux;
 void selectionSort (int array[], int value){
     int i, j, min;
     for (i=0; i < value -1; i++){
-        min = 1;
+        min = i;
         for (j = i + 1; j < value; j++){
             if (array[j] < array[min]){
                 min = j;
